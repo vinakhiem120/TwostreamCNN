@@ -124,11 +124,12 @@ class ResNet(nn.Module):
     
 class Convolution(nn.Module):
     def __init__(self):
+        super().__init__()
         self.conv = nn.Conv2d(3,64, kernel_size=3,bias = False)
         self.batch_norm = nn.BatchNorm2d(64)
-        self.relu = nn.LeakyRelU()
+        self.relu = nn.LeakyReLU()
     def forward(self,x):
-        return self.relu(self.batch_norm(self.conv1(x))) 
+        return self.relu(self.batch_norm(self.conv(x))) 
     
 class TwoStreamCNN(nn.Module):
     def __init__(self,num_classes,type='tsma'):

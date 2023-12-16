@@ -4,16 +4,15 @@ import yaml
 import torch 
 from utils.utils import dict_to_namespace
 from torchvision.transforms import v2,InterpolationMode
+import wandb
 
 def main():
+    logger = wandb
     transform = v2.Compose([
-        v2.ToImage(),
-        v2.Resize(size=(226, 226), interpolation= InterpolationMode.NEAREST),
-        v2.RandomHorizontalFlip(p=0.5),
-        v2.ToDtype(torch.float32, scale=True),
+        v2.Resize(size=(226, 226), antialias=True),
+        v2.ToTensor(),
+        v2.Normalize(mean=[0.5], std=[0.5])  # Gray normalization
     ])
-    log_dir = './logs'    
-    logger = SummaryWriter(log_dir)
 
     config_path = './configs/config.yml'
 
@@ -22,8 +21,8 @@ def main():
 
     config = dict_to_namespace(config)  # Convert dictionary to Namespace object
 
-    runner = runner(config = config, logger = logger,transform= transform)
-    runner.train()
+    model = runner(config = config,logger = logger,transform= transform)
+    model.train()
 
 
 if __name__ == "__main__":

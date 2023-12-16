@@ -7,16 +7,18 @@ from torch.optim import Adam
 from torchvision import datasets
 from torchvision import transforms
 from torch.utils.data import DataLoader
+import tqdm
+from tqdm import tqdm
 from utils import utils
 from timeit import default_timer as timer
-device = utils.get_device()
+import wandb
 
 class runner():
-    def __init__(self,config, logger, transform = None):
+    def __init__(self,config,logger,transform = None):
         self.batch_size = config.data.batch_size
         self.num_workers = config.data.num_workers
         self.image_size = config.data.image_size 
-        self.num_output = config.data.num_output
+        self.num_output = config.train.num_output
         
         self.train_path = str(config.path.train_path)
         self.test_path = str(config.path.test_path)
@@ -24,29 +26,29 @@ class runner():
         
         self.epoch = config.train.epoch
         self.criterion = nn.CrossEntropyLoss()
-        self.model = TwoStreamCNN(self.num_output,type = "tsma")
+        self.get_device()
+        self.model = TwoStreamCNN(self.num_output,type = "tsma").to(self.device)
         self.optimizer = self._get_optim(config.train.optimizer)
         
         self.transform = transform
-        self.train_loader = None
-        self.test_loader = None
-        self.val_loader = None
+
         self._init_data()
-        self.get_device()
-        self.ckpt = config.path.ckpt_path
-        
-        # load checkpoint
-        if 'ckpt_path' in config.path:
-            if config.path.ckpt_path is not None:
-                last_state = torch.load(config.path.ckpt_path)
-                self.global_step = last_state['last_step']
-                self.model.load_state_dict(last_state['last_model'])
+
+        self.logger = logger
+        self.logger.init(
+            project="Two_Stream_CNN_Project",
+            
+            config = {
+                "learning_rate": config.train.lr,
+                "architecture": "TwoStream_with_AlexNet",
+                "dataset": "ASL alphabets",
+                "epochs": config.train.epoch,
+            })
     def get_device(self):
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        return self.device
     def _init_data(self):
-        train_data = ASLDataset(data_path= (self.train_path),[1,2500],transform=self.transform)
-        test_data = ASLDataset(data_path= (self.test_path),[2500,500], transform=self.transform)
+        train_data = ASLDataset(data_path= (self.train_path),range_index = [1,2500],transform=self.transform)
+        test_data = ASLDataset(data_path= (self.train_path),range_index = [2501,3000], transform=self.transform)
         self.train_loader = DataLoader(dataset = train_data,
                                   batch_size= self.batch_size,
                                   num_workers= self.num_workers
@@ -90,6 +92,7 @@ class runner():
 
             # 5. Optimizer step
             optimizer.step()
+            
 
             # Calculate and accumulate accuracy metric across all batches
             y_pred_class = torch.argmax(torch.softmax(y_pred, dim=1), dim=1)
@@ -146,14 +149,15 @@ class runner():
         
         # 3. Loop through training and testing steps for a number of epochs
         for epoch in tqdm(range(epochs)):
-            train_loss, train_acc = train_step(model=model,
+            train_loss, train_acc = self.train_step(model=model,
                                             dataloader=train_dataloader,
                                             loss_fn=loss_fn,
                                             optimizer=optimizer)
-            test_loss, test_acc = test_step(model=model,
+            self.logger.log({"train accuracy":train_acc, "train loss":train_loss})
+            test_loss, test_acc = self.test_step(model=model,
                 dataloader=test_dataloader,
                 loss_fn=loss_fn)
-            
+            self.logger.log({"test accuracy":test_acc, "test loss":test_loss})
             # 4. Print out what's happening
             print(
                 f"Epoch: {epoch+1} | "

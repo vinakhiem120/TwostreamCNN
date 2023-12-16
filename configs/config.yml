@@ -4,7 +4,7 @@ data:
   image_size: 200
 
 path:
-  train_path: asl_alphabet_train
+  train_path: asl_alphabet_train\\asl_alphabet_train
   test_path: asl_alphabet_train
   eval_path: .\data\eval.csv
   ckpt_path: .\ckpt\best_epoch.pth

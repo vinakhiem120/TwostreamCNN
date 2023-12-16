@@ -6,9 +6,9 @@
 *\.onnx
 
 
-
+asl_alphabet
 asl_alphabet_test
 asl_alphabet_train
 asl-alphabet.zip
-
+archive.zip
 __pycache__
